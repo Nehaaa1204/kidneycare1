@@ -1,0 +1,7 @@
+.aurora-container {
+  position: fixed;
+  inset: 0;
+  z-index: -1;           /* keeps it behind everything */
+  pointer-events: none;  /* lets you click buttons through it */
+  overflow: hidden;
+}
