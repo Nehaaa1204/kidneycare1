@@ -4,6 +4,5 @@ import { addNote, getNotesForPatient } from "../controllers/noteController.js";
 const router = express.Router();
 
 router.post("/", addNote);
-router.get("/:patientId", getNotesForPatient); // changed here ✅
-
+router.get("/:patientId", getNotesForPatient);
 export default router;

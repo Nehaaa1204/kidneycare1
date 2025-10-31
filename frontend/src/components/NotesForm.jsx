@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { addNote, getPatients } from "../api/api"; // ✅ make sure getPatients exists in api.js
+import { addNote, getPatients } from "../api/api";
 import {
   Box,
   Button,
@@ -144,8 +144,8 @@ export default function NotesForm() {
           }}
         >
           {patients.map((p) => (
-            <MenuItem key={p._id} value={p._id}>
-              {p.name} (ID: {p._id})
+            <MenuItem key={p.id} value={p.id}>
+              {p.name} (ID: {p.id})
             </MenuItem>
           ))}
         </TextField>
