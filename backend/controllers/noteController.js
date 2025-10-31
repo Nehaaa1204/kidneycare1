@@ -26,11 +26,12 @@ export const addNote = async (req, res) => {
 
 export const getNotesForPatient = async (req, res) => {
   try {
+    const { patientId } = req.params;
     const db = getDB();
-    const patientUsername = req.params.patientId;
-    const notes = await db.collection("patientNotes").find({ patientId: patientUsername }).toArray();
+    const notes = await db.collection("patientNotes").find({ patientId }).toArray();
     res.json(notes);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
+
