@@ -44,14 +44,18 @@ export default function PatientDashboard() {
 
   useEffect(() => {
     if (selected === "Doctor Recommendations" && user) {
+      console.log("Fetching notes for patientId:", user.username); // 👈 Add this
       setLoading(true);
       getNotes(user.username)
         .then((res) => {
+          console.log("Fetched notes:", res.data); // 👈 Add this
           setRecommendations(res.data || []);
         })
+        .catch((err) => console.error("Error fetching notes:", err))
         .finally(() => setLoading(false));
     }
   }, [selected, user]);
+
 
   const renderContent = () => {
     switch (selected) {
