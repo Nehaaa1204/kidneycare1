@@ -5,8 +5,10 @@ import FileUpload from "../components/FileUpload";
 import NotesForm from "../components/NotesForm";
 import PatientList from "../components/PatientList";
 import Aurora from "../components/Aurora";
+import ViewCKDPrediction from "../components/ViewCKDPrediction"; // 🆕 Import added
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+
 import {
   Box,
   List,
@@ -21,6 +23,7 @@ import {
   Image as ImageIcon,
   NotebookPen,
   Users,
+  Activity,
 } from "lucide-react";
 
 const darkTheme = createTheme({
@@ -52,6 +55,8 @@ export default function DoctorDashboard() {
         return <NotesForm />;
       case "Patient List":
         return <PatientList />;
+      case "View CKD Prediction": // 🆕 Added new case
+        return <ViewCKDPrediction />;
       default:
         return null;
     }
@@ -60,7 +65,11 @@ export default function DoctorDashboard() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Aurora colorStops={auroraColors} amplitude={2.0} blend={0.5} speed={2.0} />
+      <Aurora 
+      colorStops={auroraColors}
+       amplitude={2.0} 
+       blend={0.5}
+        speed={2.0} />
 
       <Box
         sx={{
@@ -98,6 +107,7 @@ export default function DoctorDashboard() {
                 { name: "Medical Imaging", icon: <ImageIcon size={20} /> },
                 { name: "Professional Notes", icon: <NotebookPen size={20} /> },
                 { name: "Patient List", icon: <Users size={20} /> },
+                { name: "View CKD Prediction", icon: <Activity size={20} /> }, // 🆕 New option
               ].map((item) => (
                 <ListItemButton
                   key={item.name}

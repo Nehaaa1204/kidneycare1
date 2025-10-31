@@ -15,8 +15,7 @@ export const getSignedUpPatients = () => API.get("/patients/signedup");
 export const deletePatient = (id) => API.delete(`/patients/${id}`);
 
 export const addNote = (data) => API.post("/notes", data);
-export const getNotes = (patientId) => API.get(`/notes/${patientId}`);
-
+export const getNotes = (patientUsername) =>axios.get(`/api/notes/${patientUsername}`);
 export const uploadScan = (id, formData) => API.post(`/scans/${id}`, formData);
 export const getScans = (id) => API.get(`/scans/${id}`);
 export const analyzeImage = (formData) => API.post("/scans/analyze", formData);

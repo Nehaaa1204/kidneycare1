@@ -4,6 +4,8 @@ import { MongoClient } from "mongodb";
 const uri = process.env.MONGO_URI;
 let db;
 
+export const getNotes = (patientId) => API.get(`/notes/${patientId}`);
+
 export async function connectDB() {
   const uri = process.env.MONGO_URI; // ← read here, after dotenv runs
 
