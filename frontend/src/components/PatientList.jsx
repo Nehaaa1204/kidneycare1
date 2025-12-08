@@ -33,7 +33,7 @@ export default function PatientList() {
   const remove = async (id) => {
     try {
       await deletePatient(id);
-      setPatients((prev) => prev.filter((p) => p._id !== id));
+      setPatients((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       console.error("Error deleting patient:", err);
       alert("❌ Could not delete patient. Please try again.");
@@ -107,7 +107,7 @@ export default function PatientList() {
         >
           {patients.map((p) => (
             <Box
-              key={p._id}
+              key={p.id}
               sx={{
                 border: "1px solid rgba(255,255,255,0.1)",
                 borderRadius: 2,
@@ -130,7 +130,7 @@ export default function PatientList() {
                     {p.name}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "#ccc" }}>
-                    ID: {p._id?.slice(-5).toUpperCase()} | Age: {p.age} | Gender: {p.gender}
+                    ID: {p.id}| Age: {p.age} | Gender: {p.gender}
                   </Typography>
                 </Box>
 
@@ -140,7 +140,7 @@ export default function PatientList() {
                     variant="contained"
                     size="small"
                     startIcon={<StickyNote size={16} />}
-                    onClick={() => toggleNotes(p._id)}
+                    onClick={() => toggleNotes(p.id)}
                     sx={{
                       borderRadius: 2,
                       fontSize: "0.8rem",
@@ -163,7 +163,7 @@ export default function PatientList() {
                     variant="contained"
                     size="small"
                     startIcon={<Trash2 size={16} />}
-                    onClick={() => remove(p._id)}
+                    onClick={() => remove(p.id)}
                     sx={{
                       borderRadius: 2,
                       fontSize: "0.8rem",
@@ -185,10 +185,10 @@ export default function PatientList() {
               </Box>
 
               {/* Collapsible Notes Section */}
-              <Collapse in={openNotes[p._id]}>
+              <Collapse in={openNotes[p.id]}>
                 <Divider sx={{ my: 1.5, backgroundColor: "rgba(255,255,255,0.2)" }} />
-                {notesData[p._id]?.length ? (
-                  notesData[p._id].map((note, i) => (
+                {notesData[p.id]?.length ? (
+                  notesData[p.id].map((note, i) => (
                     <Box key={i} sx={{ mb: 1 }}>
                       <Typography variant="subtitle2" sx={{ color: "#90caf9" }}>
                         Diagnosis:
@@ -211,7 +211,7 @@ export default function PatientList() {
                         {note.recommendations}
                       </Typography>
 
-                      {i !== notesData[p._id].length - 1 && (
+                      {i !== notesData[p.id].length - 1 && (
                         <Divider sx={{ my: 1, backgroundColor: "rgba(255,255,255,0.1)" }} />
                       )}
                     </Box>
