@@ -48,11 +48,14 @@ export default function PatientDashboard() {
       setLoading(true);
       getNotes(user.username)
         .then((res) => {
+          console.log("Fetched notes:", res.data); // 👈 Add this
           setRecommendations(res.data || []);
         })
+        .catch((err) => console.error("Error fetching notes:", err))
         .finally(() => setLoading(false));
     }
   }, [selected, user]);
+
 
   const renderContent = () => {
     switch (selected) {
