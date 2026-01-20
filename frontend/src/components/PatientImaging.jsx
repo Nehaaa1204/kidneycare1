@@ -38,38 +38,38 @@ export default function PatientImaging() {
     formData.append("upload_preset", "patient_scans_unsigned");
     formData.append("cloud_name", "dsy2znu4i");
 
-    // 🔹 Upload to Cloudinary
+    // ✅ Upload to Cloudinary
     const cloudRes = await axios.post(
       "https://api.cloudinary.com/v1_1/dsy2znu4i/image/upload",
       formData
     );
 
-    console.log("✅ Cloudinary upload response:", cloudRes.data);
-
+    // ✅ DEFINE FIRST
     const uploadedUrl = cloudRes.data.secure_url;
+
     console.log("🔗 Uploaded image URL:", uploadedUrl);
 
-    if (!uploadedUrl) {
-      alert("❌ No secure_url returned from Cloudinary!");
-      return;
-    }
+    // ✅ THEN USE
+    setImageUrl(uploadedUrl);
 
-    // 🔹 Send to backend for analysis
-    console.log("📨 Sending to backend for analysis...");
-    const analyzeRes = await axios.post("http://localhost:5000/api/scans/test", {
-      imageUrl: uploadedUrl,
-    });
+    // ✅ Send to backend
+    const analyzeRes = await axios.post(
+      "http://localhost:5000/api/scans/test",
+      {
+        imageUrl: uploadedUrl,
+      }
+    );
 
-    console.log("✅ Backend response:", analyzeRes.data);
     setAnalysis(analyzeRes.data);
 
   } catch (err) {
     console.error("❌ Full error object:", err);
-    alert("❌ Upload or analysis failed. Check console for details.");
+    alert("❌ Upload or analysis failed.");
   } finally {
     setLoading(false);
   }
 };
+
 
 
   return (
@@ -179,11 +179,18 @@ export default function PatientImaging() {
               border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            {analysis.result ? (
-              <Typography>{analysis.result}</Typography>
-            ) : (
-              <Typography>No analysis details available.</Typography>
-            )}
+            
+              
+              <Typography>
+                <b>Prediction: </b> {analysis.result || analysis.prediction || analysis.message}
+              </Typography>
+
+              {analysis.confidence && (
+              <Typography>
+                  <b>Confidence:</b> {analysis.confidence}%
+                </Typography>
+              )}
+
           </Paper>
         </Box>
       )}
