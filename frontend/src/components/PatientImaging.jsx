@@ -13,7 +13,7 @@ export default function PatientImaging() {
   const [file, setFile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [imageUrl, setImageUrl] = useState(null); 
+  const [imageUrl, setImageUrl] = useState(null);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -22,62 +22,75 @@ export default function PatientImaging() {
   };
 
   const handleUpload = async () => {
-  if (!file) {
-    alert("Please select a scan to upload.");
-    return;
-  }
+    if (!file) {
+      alert("Please select a scan to upload.");
+      return;
+    }
 
-  setLoading(true);
-  setAnalysis(null);
-
-  try {
-    console.log("📤 Starting Cloudinary upload...");
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "patient_scans_unsigned");
-    formData.append("cloud_name", "dsy2znu4i");
-
-    // ✅ Upload to Cloudinary
-    const cloudRes = await axios.post(
-      "https://api.cloudinary.com/v1_1/dsy2znu4i/image/upload",
-      formData
-    );
-
-    // ✅ DEFINE FIRST
-    const uploadedUrl = cloudRes.data.secure_url;
-
-    console.log("🔗 Uploaded image URL:", uploadedUrl);
-
-    // ✅ THEN USE
-    setImageUrl(uploadedUrl);
-
-    // ✅ Send to backend
-    const analyzeRes = await axios.post(
-      "http://localhost:5000/api/scans/test",
-      {
-        imageUrl: uploadedUrl,
-      }
-    );
-
-    setAnalysis(analyzeRes.data);
-
-  } catch (err) {
-    console.error("❌ Full error object:", err);
-    alert("❌ Upload or analysis failed.");
-  } finally {
-    setLoading(false);
-  }
-};
+    // ✅ Get patient ID from localStorage
+    const loggedInPatient = JSON.parse(localStorage.getItem("user"));
+    const patientId = loggedInPatient?.username;
 
 
+    if (!patientId) {
+      alert("Session expired. Please login again.");
+      return;
+    }
+
+    setLoading(true);
+    setAnalysis(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "patient_scans_unsigned");
+      formData.append("cloud_name", "dsy2znu4i");
+
+      // ✅ Step 1: Upload to Cloudinary
+      const cloudRes = await axios.post(
+        "https://api.cloudinary.com/v1_1/dsy2znu4i/image/upload",
+        formData
+      );
+      const uploadedUrl = cloudRes.data.secure_url;
+      setImageUrl(uploadedUrl);
+      console.log("🔗 Uploaded image URL:", uploadedUrl);
+
+      // ✅ Step 2: Save to MongoDB with patientId
+      await axios.post(
+        `http://localhost:5000/api/scans/${patientId}`,
+        { imageUrl: uploadedUrl }
+      );
+      console.log("✅ Scan saved to DB!");
+
+      // ✅ Step 3: Analyze
+      const analyzeRes = await axios.post(
+        "http://localhost:5000/api/scans/test",
+        { imageUrl: uploadedUrl }
+      );
+      setAnalysis(analyzeRes.data);
+
+    } catch (err) {
+      console.error("❌ Error:", err);
+      alert("❌ Upload or analysis failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    // new
     <Box sx={{ p: 0, width: "100%" }}>
       <Typography
         variant="h6"
-        sx={{ mb: 2, fontWeight: 600, color: "#ffffffff", textAlign: "center", justifyContent: "center", display: "flex", alignItems: "center", gap: 1 }}
+        sx={{
+          mb: 2,
+          fontWeight: 600,
+          color: "#ffffffff",
+          textAlign: "center",
+          justifyContent: "center",
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+        }}
       >
         <FileImage size={22} /> Upload and Analyze Scan
       </Typography>
@@ -98,7 +111,7 @@ export default function PatientImaging() {
       >
         <input
           type="file"
-          accept="image/*,"
+          accept="image/*"
           style={{ display: "none" }}
           id="scan-upload"
           onChange={handleFileChange}
@@ -114,9 +127,7 @@ export default function PatientImaging() {
               color: "#fff",
               backgroundColor: "rgba(255,255,255,0.1)",
               border: "1px solid rgba(255,255,255,0.3)",
-              "&:hover": {
-                backgroundColor: "rgba(255,255,255,0.2)",
-              },
+              "&:hover": { backgroundColor: "rgba(255,255,255,0.2)" },
             }}
           >
             Choose File
@@ -140,16 +151,18 @@ export default function PatientImaging() {
             textTransform: "none",
             backgroundColor: "rgba(183,28,28,0.8)",
             color: "#fff",
-            "&:hover": {
-              backgroundColor: "rgba(183,28,28,1)",
-            },
+            "&:hover": { backgroundColor: "rgba(183,28,28,1)" },
           }}
         >
-          {loading ? <CircularProgress size={20} sx={{ color: "white" }} /> : "Analyze Scan"}
+          {loading ? (
+            <CircularProgress size={20} sx={{ color: "white" }} />
+          ) : (
+            "Analyze Scan"
+          )}
         </Button>
       </Box>
 
-       {/* Show Uploaded Image */}
+      {/* Show Uploaded Image */}
       {imageUrl && (
         <Box sx={{ mt: 3, textAlign: "center" }}>
           <img
@@ -179,18 +192,16 @@ export default function PatientImaging() {
               border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            
-              
+            <Typography>
+              <b>Prediction: </b>{" "}
+              {analysis.result || analysis.prediction || analysis.message}
+            </Typography>
+
+            {analysis.confidence && (
               <Typography>
-                <b>Prediction: </b> {analysis.result || analysis.prediction || analysis.message}
+                <b>Confidence:</b> {analysis.confidence}%
               </Typography>
-
-              {analysis.confidence && (
-              <Typography>
-                  <b>Confidence:</b> {analysis.confidence}%
-                </Typography>
-              )}
-
+            )}
           </Paper>
         </Box>
       )}

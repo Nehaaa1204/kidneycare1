@@ -20,12 +20,16 @@ export const uploadScan = async (req, res) => {
   try {
     const db = getDB();
     const patientId = req.params.patientId;
-    if (!req.file?.path) {
-      return res.status(400).json({ error: "No file uploaded" });
+    
+    const imageUrl = req.body.imageUrl || req.file?.path;
+    
+    if (!imageUrl) {
+      return res.status(400).json({ error: "No image URL provided" });
     }
+
     const scan = {
-      patientId,
-      imageUrl: req.file.path,
+      patientIdImaging: patientId,  // ✅ matches your MongoDB field name
+      imageUrl: imageUrl,
       uploadedAt: new Date(),
     };
 
@@ -41,7 +45,7 @@ export const getScansByPatient = async (req, res) => {
     const db = getDB();
     const scans = await db
       .collection("scans")
-      .find({ patientId: req.params.patientId })
+      .find({ patientIdImaging: req.params.patientId })  // ✅ fixed field name
       .sort({ uploadedAt: -1 })
       .toArray();
     res.json(scans);
