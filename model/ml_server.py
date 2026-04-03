@@ -1,4 +1,5 @@
 import cv2
+import os
 import numpy as np
 import requests
 from flask import Flask, request, jsonify
@@ -61,5 +62,5 @@ def predict():
     })
 
 if __name__ == "__main__":
-    app.run(port=5002, debug=True,host="0.0.0.0")
-    
+    port = int(os.environ.get("PORT", 10000))
+    app.run(port=port, host="0.0.0.0")
