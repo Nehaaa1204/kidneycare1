@@ -20,3 +20,4 @@ export const uploadScan = (id, formData) => API.post(`/scans/${id}`, formData);
 export const getScans = (id) => API.get(`/scans/${id}`);
 export const analyzeImage = (formData) => API.post("/scans/analyze", formData);
 
+//redeployment test
