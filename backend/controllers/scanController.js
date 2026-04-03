@@ -106,7 +106,7 @@ export const analyzeImage = async (req, res) => {
     const imageUrl = req.file?.path || req.body.imageUrl;
     if (!imageUrl) return res.status(400).json({ error: "No image URL" });
 
-    const flaskRes = await fetch("http://127.0.0.1:8000/predict", {
+    const flaskRes = await fetch("https://kidneycare1-3.onrender.com/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageUrl }),
