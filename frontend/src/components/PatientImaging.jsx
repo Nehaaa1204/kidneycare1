@@ -41,14 +41,14 @@ export default function PatientImaging() {
       console.log("🔗 Uploaded:", uploadedUrl);
 
       // Step 2: Save to MongoDB
-      await axios.post(`http://localhost:5000/api/scans/${patientId}`, {
+      await axios.post(`https://kidneycare1-backend.onrender.com/api/scans/${patientId}`, {
         imageUrl: uploadedUrl
       });
       console.log("✅ Saved to DB!");
 
       // Step 3: Analyze CT scan via ml_server.py
       const analyzeRes = await axios.post(
-        "http://localhost:5000/api/scans/test",
+        "https://kidneycare1-backend.onrender.com/api/scans/test",
         { imageUrl: uploadedUrl }
       );
       console.log("🧠 Analysis:", analyzeRes.data);

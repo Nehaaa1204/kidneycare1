@@ -26,7 +26,7 @@ export default function ViewCKDPrediction() {
       console.log("Fetching CKD predictions for patient:", patientId);
 
       const response = await fetch(
-        `http://localhost:5000/api/scans/ckd/${patientId}`
+        `https://kidneycare1-backend.onrender.com/api/scans/ckd/${patientId}`
       );
 
       if (!response.ok) {
