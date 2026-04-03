@@ -1,7 +1,7 @@
 import { useAuth } from "../context/AuthContext";
 import { LogOut, UserCircle2 } from "lucide-react";
 import { Box, Button, Typography, Avatar } from "@mui/material";
-import logo from "../assets/KidneyCareLogo.png"; // update path if needed
+import logo from "../assets/KidneycareLogo.png"; // update path if needed
 
 export default function Header() {
   const { user, logout } = useAuth();
