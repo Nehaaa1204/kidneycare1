@@ -3,6 +3,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../api/api";
 import { useAuth } from "../context/AuthContext";
+// ✅ Import icons
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { InputAdornment, IconButton } from "@mui/material";
 import {
   Box,
   Button,
@@ -61,21 +64,42 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
-    primary: { main: "#1a237e" },
-    secondary: { main: "#b71c1c" },
+    primary: { main: "#0ea5e9" },
+    secondary: { main: "#10b981" },
+    background: {
+      default: "#0f172a",
+      paper: "rgba(30, 41, 59, 0.95)",
+    },
+    text: {
+      primary: "#f1f5f9",
+      secondary: "#cbd5e1",
+    },
   },
+  divider: "rgba(14, 165, 233, 0.2)",
 });
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // ✅ ALL STATE VARIABLES INSIDE COMPONENT
   const [form, setForm] = useState({
     username: "",
     password: "",
     role: "doctor",
   });
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false); // ✅ PASSWORD VISIBILITY STATE
   const auroraColors = ["#0A0D5A", "#8B0000", "#0A0D5A"];
+
+  // ✅ PASSWORD VISIBILITY HANDLERS
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleMouseDownPassword = (event) => {
+    event.preventDefault();
+  };
 
   const validateInputs = () => {
     const newErrors = {};
@@ -108,10 +132,10 @@ export default function Login() {
       <CssBaseline />
       {/* Aurora Background */}
       <Aurora
-        colorStops={["#0A0D5A", "#8B0000", "#0A0D5A", "#8B0000", "#0A0D5A"]} // more variation
-        amplitude={2.0}       // bigger waves
-        blend={0.5}            // stronger blending
-        speed={2.0}            // faster movement
+        colorStops={["#0A0D5A", "#8B0000", "#0A0D5A", "#8B0000", "#0A0D5A"]}
+        amplitude={2.0}
+        blend={0.5}
+        speed={2.0}
       />
 
       <SignInContainer direction="column">
@@ -119,16 +143,31 @@ export default function Login() {
           colors={["#10643eff", "#4079ff", "#10643eff", "#4079ff", "#10643eff"]}
           animationSpeed={8}
           showBorder={true}
-          style={{ textAlign: "center", fontSize: "2.5rem", fontWeight: "bold", marginBottom: "2rem" }}
+          style={{
+            textAlign: "center",
+            fontSize: "2.5rem",
+            fontWeight: "bold",
+            marginBottom: "2rem",
+          }}
         >
           Welcome to Kidney Care
-          <p style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "normal" }}>
+          <p
+            style={{
+              textAlign: "center",
+              fontSize: "1.5rem",
+              fontWeight: "normal",
+            }}
+          >
             Multilevel Kidney Diagnostics
           </p>
         </GradientText>
 
         <Card variant="outlined">
-          <Typography component="h1" variant="h5" sx={{ width: "100%", textAlign: "center" }}>
+          <Typography
+            component="h1"
+            variant="h5"
+            sx={{ width: "100%", textAlign: "center" }}
+          >
             Login
           </Typography>
 
@@ -139,10 +178,11 @@ export default function Login() {
           >
             {/* Username */}
             <FormControl>
-              <FormLabel htmlFor="username" placeholder="Please enter username or id">Username</FormLabel>
+              <FormLabel htmlFor="username">Username</FormLabel>
               <TextField
                 fullWidth
                 id="username"
+                placeholder="Enter your username or ID"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
                 error={!!errors.username}
@@ -150,17 +190,44 @@ export default function Login() {
               />
             </FormControl>
 
-            {/* Password */}
-            <FormControl>
-              <FormLabel htmlFor="password" placeholder="please enter the password">Password</FormLabel>
+            {/* ✅ PASSWORD WITH EYE ICON */}
+            <FormControl fullWidth>
+              <FormLabel sx={{ mb: 1 }}>Password</FormLabel>
               <TextField
-                fullWidth
-                type="password"
                 id="password"
+                placeholder="Enter your password"
+                type={showPassword ? "text" : "password"} // ✅ Toggle between text and password
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 error={!!errors.password}
                 helperText={errors.password}
+                fullWidth
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={handleClickShowPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                        sx={{
+                          color: "#0ea5e9",
+                          "&:hover": {
+                            backgroundColor: "rgba(14, 165, 233, 0.1)",
+                            color: "#10b981",
+                          },
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {showPassword ? (
+                          <Visibility sx={{ fontSize: "20px" }} />
+                        ) : (
+                          <VisibilityOff sx={{ fontSize: "20px" }} />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             </FormControl>
 
@@ -187,9 +254,20 @@ export default function Login() {
             <Typography sx={{ color: "text.secondary" }}>or</Typography>
           </Divider>
 
-          <Typography sx={{ textAlign: "center", mt:2,color: "#fff" }}>
-            Don’t have an account?{" "}
-            <Link onClick={() => navigate("/signup")} sx={{ cursor: "pointer",color:"#64b5f6" }}>
+          <Typography sx={{ textAlign: "center", mt: 2, color: "#fff" }}>
+            Don't have an account?{" "}
+            <Link
+              onClick={() => navigate("/signup")}
+              sx={{
+                cursor: "pointer",
+                color: "#64b5f6",
+                "&:hover": {
+                  color: "#10b981",
+                  textDecoration: "underline",
+                },
+                transition: "all 0.2s ease",
+              }}
+            >
               Sign up
             </Link>
           </Typography>
@@ -197,4 +275,4 @@ export default function Login() {
       </SignInContainer>
     </ThemeProvider>
   );
-}
+} 

@@ -1,33 +1,167 @@
-import React, { useState, useEffect } from "react";
-import { Box, Typography, Paper, Divider, Button, CircularProgress, Alert, Stack } from "@mui/material";
-import { Activity, FileText, User, Calendar, FlaskConical, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState } from "react";
+import { Box, Typography, Paper, Divider, Button, CircularProgress, Alert, Stack, TextField } from "@mui/material";
+import { Activity, User, Calendar, FlaskConical, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function ViewCKDPrediction() {
   const [reports, setReports] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [patientId, setPatientId] = useState("");
+  const [searched, setSearched] = useState(false);
 
-  // Fetch reports from the FastAPI backend
-  useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        const response = await fetch("http://127.0.0.1:8001/reports");
-        if (!response.ok) throw new Error("Failed to fetch records");
-        const data = await response.json();
-        setReports(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  // ✅ FETCH FUNCTION
+  const fetchReports = async () => {
+    if (!patientId.trim()) {
+      alert("Please enter a patient ID");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSearched(true);
+    setCurrentIndex(0);
+
+    try {
+      console.log("Fetching CKD predictions for patient:", patientId);
+
+      const response = await fetch(
+        `http://localhost:5000/api/scans/ckd/${patientId}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch CKD predictions");
       }
-    };
-    fetchReports();
-  }, []);
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}><CircularProgress color="inherit" /></Box>;
-  if (error) return <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>;
-  if (reports.length === 0) return <Typography sx={{ textAlign: 'center', mt: 10, color: '#aaa' }}>No medical records found.</Typography>;
+      const data = await response.json();
+      console.log("Reports received:", data);
+
+      if (data.length === 0) {
+        setError("No CKD predictions found for this patient");
+        setReports([]);
+      } else {
+        setReports(data);
+        setError(null);
+      }
+    } catch (err) {
+      console.error("Error fetching reports:", err);
+      setError(err.message || "Failed to fetch records");
+      setReports([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ HANDLE ENTER KEY PRESS
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      fetchReports();
+    }
+  };
+
+  // ✅ SEARCH PAGE
+  if (!searched) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Typography
+          variant="h5"
+          sx={{
+            mb: 3,
+            fontWeight: 600,
+            color: "#ffffff",
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          <Activity size={24} /> Search CKD Predictions
+        </Typography>
+
+        <Paper
+          sx={{
+            p: 3,
+            backgroundColor: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: 2,
+            maxWidth: 600,
+          }}
+        >
+          <Typography sx={{ mb: 2, color: "#fff", fontWeight: 600 }}>
+            Enter Patient ID to view CKD predictions
+          </Typography>
+
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              label="Patient ID or Name"
+              value={patientId}
+              onChange={(e) => setPatientId(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Enter patient ID"
+              fullWidth
+              sx={{
+                "& .MuiInputBase-input": { color: "#fff" },
+                "& .MuiOutlinedInput-root": {
+                  "& fieldset": { borderColor: "rgba(255,255,255,0.3)" },
+                  "&:hover fieldset": { borderColor: "rgba(255,255,255,0.5)" },
+                },
+              }}
+            />
+            <Button
+              variant="contained"
+              onClick={fetchReports}
+              disabled={loading}
+              sx={{
+                backgroundColor: "#1a237e",
+                color: "#fff",
+                fontWeight: 600,
+                "&:hover": { backgroundColor: "#0d1b4e" },
+              }}
+            >
+              {loading ? "Searching..." : "Search"}
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
+
+  // ✅ LOADING STATE
+  if (loading)
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 10 }}>
+        <CircularProgress color="inherit" />
+      </Box>
+    );
+
+  // ✅ ERROR STATE
+  if (error)
+    return (
+      <Box sx={{ p: 4 }}>
+        <Alert severity="error">{error}</Alert>
+        <Button
+          onClick={() => setSearched(false)}
+          sx={{ mt: 2, color: "#fff" }}
+        >
+          Back to Search
+        </Button>
+      </Box>
+    );
+
+  // ✅ NO RESULTS STATE
+  if (reports.length === 0)
+    return (
+      <Box sx={{ p: 4 }}>
+        <Typography sx={{ textAlign: "center", color: "#aaa" }}>
+          No CKD predictions found.
+        </Typography>
+        <Button
+          onClick={() => setSearched(false)}
+          sx={{ mt: 2, color: "#fff" }}
+        >
+          Back to Search
+        </Button>
+      </Box>
+    );
 
   const currentReport = reports[currentIndex];
 
@@ -43,7 +177,7 @@ export default function ViewCKDPrediction() {
         >
           <ChevronLeft />
         </Button>
-        <Typography variant="body2">Record {currentIndex + 1} of {reports.length}</Typography>
+        <Typography variant="body2">Report {currentIndex + 1} of {reports.length}</Typography>
         <Button 
           disabled={currentIndex === reports.length - 1} 
           onClick={() => setCurrentIndex(prev => prev + 1)}
@@ -54,59 +188,139 @@ export default function ViewCKDPrediction() {
       </Stack>
 
       <Typography variant="h5" sx={{ mb: 3, fontWeight: 600, color: "#ffffff", display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
-        <Activity size={24} /> CKD History & Analytics
+        <Activity size={24} /> CKD Prediction History
       </Typography>
 
-      <Paper elevation={6} sx={{ maxWidth: 600, width: "100%", p: 4, borderRadius: 3, backdropFilter: "blur(15px)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)" }}>
-        
+      <Paper elevation={6} sx={{ maxWidth: 700, width: "100%", p: 4, borderRadius: 3, backdropFilter: "blur(15px)", background: "rgba(255,255,255,0.05)", border: `2px solid ${currentReport.ckdDetected ? "#d32f2f" : "#2e7d32"}` }}>        
         {/* Patient Header */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, color: "#ffffff", display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <User size={18} style={{ marginRight: 8 }} />
-            {currentReport.patient?.name || "Anonymous Patient"}
+            {currentReport.patientId || "Patient Record"}
           </Typography>
           <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.7)", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-            <Calendar size={14} /> Saved on: {new Date(currentReport.saved_at).toLocaleDateString()}
+            <Calendar size={14} /> Saved on: {new Date(currentReport.uploadedAt).toLocaleDateString()} at {new Date(currentReport.uploadedAt).toLocaleTimeString()}
           </Typography>
         </Box>
 
         <Divider sx={{ mb: 3, borderColor: "rgba(255,255,255,0.2)" }} />
+
+        {/* CKD Status */}
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 2,
+            textAlign: "center",
+            bgcolor: currentReport.ckdDetected
+              ? "rgba(211, 47, 47, 0.2)"
+              : "rgba(46, 125, 50, 0.2)",
+            border: `1px solid ${
+              currentReport.ckdDetected ? "#d32f2f" : "#2e7d32"
+            }`,
+          }}
+        >
+          <Typography
+            variant="h6"
+            sx={{
+              color: currentReport.ckdDetected ? "#ff5252" : "#4caf50",
+              fontWeight: 900,
+              mb: 1,
+            }}
+          >
+            {currentReport.ckdDetected ? "🔴 CKD DETECTED" : "🟢 NORMAL"}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#fff" }}>
+            {currentReport.message || "CKD Analysis Complete"}
+          </Typography>
+        </Box>
+
+        {/* ML Prediction Confidence */}
+        <Box
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 2,
+            textAlign: "left",
+            bgcolor: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.15)",
+          }}
+        >
+          <Typography
+            variant="subtitle2"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              fontWeight: "bold",
+              mb: 1,
+            }}
+          >
+            <FlaskConical size={16} /> ML MODEL PREDICTION
+          </Typography>
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+            <Typography variant="body2">
+              ✅ CKD Confidence:{" "}
+              <strong style={{ color: "#ff5252" }}>
+                {currentReport.ckdProbability || 0}%
+              </strong>
+            </Typography>
+            <Typography variant="body2">
+              ✅ Normal Confidence:{" "}
+              <strong style={{ color: "#4caf50" }}>
+                {currentReport.normalProbability || 0}%
+              </strong>
+            </Typography>
+          </Box>
+        </Box>
 
         {/* Clinical Staging */}
         <Box sx={{ mb: 3, textAlign: 'left' }}>
           <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>Risk Status:</strong> {currentReport.ckd?.risk}
+            <strong>Clinical Stage:</strong> {currentReport.ckdStage || "N/A"}
           </Typography>
           <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>Clinical Stage:</strong> {currentReport.ckd?.stage}
+            <strong>eGFR Level:</strong> {currentReport.egfr || "N/A"} mL/min
           </Typography>
-          <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>eGFR Level:</strong> {currentReport.values?.egfr} mL/min/1.73m²
+          <Typography variant="body1">
+            <strong>Risk Status:</strong> {currentReport.ckdDetected ? "HIGH" : "LOW"}
           </Typography>
-        </Box>
-
-        {/* AI/ML Verdict Box */}
-        <Box sx={{ 
-          mb: 3, p: 2, borderRadius: 2, textAlign: 'left',
-          bgcolor: currentReport.mlResult?.prediction?.includes("Detected") ? "rgba(211, 47, 47, 0.2)" : "rgba(46, 125, 50, 0.2)",
-          border: `1px solid ${currentReport.mlResult?.prediction?.includes("Detected") ? "#d32f2f" : "#2e7d32"}`
-        }}>
-          <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, fontWeight: 'bold' }}>
-            <FlaskConical size={16} /> ML MODEL VERDICT
-          </Typography>
-          <Typography variant="h6">{currentReport.mlResult?.prediction}</Typography>
-          <Typography variant="caption">Confidence Score: {currentReport.mlResult?.confidence}</Typography>
         </Box>
 
         <Divider sx={{ mb: 3, borderColor: "rgba(255,255,255,0.2)" }} />
 
-        <Typography variant="body1" sx={{ mb: 3, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, textAlign: "justify" }}>
-          <FileText size={18} style={{ marginRight: 6, verticalAlign: "middle" }} />
-          <strong>Lab Values:</strong> Creatinine: {currentReport.values?.creatinine_mg_dl} mg/dL | Urea: {currentReport.values?.urea_mg_dl} mg/dL
-        </Typography>
+        {/* Lab Report Image */}
+        {currentReport.imageUrl && (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" sx={{ color: "#aaa", mb: 1 }}>
+              📋 Lab Report Image
+            </Typography>
+            <img
+              src={currentReport.imageUrl}
+              alt="Lab Report"
+              style={{
+                maxWidth: "100%",
+                height: "auto",
+                borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.2)",
+              }}
+            />
+          </Box>
+        )}
 
-        <Button variant="contained" color="primary" fullWidth sx={{ textTransform: "none", borderRadius: 2, py: 1.5, fontWeight: 600 }}>
-          Download Clinical Summary
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          onClick={() => setSearched(false)}
+          sx={{
+            textTransform: "none",
+            borderRadius: 2,
+            py: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          Search Another Patient
         </Button>
       </Paper>
     </Box>

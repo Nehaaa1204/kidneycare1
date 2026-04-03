@@ -67,3 +67,23 @@ export const deletePatient = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// 🔥 GET Patient Timeline
+export const getPatientTimeline = async (req, res) => {
+  try {
+    const db = getDB();
+    const { id } = req.params;
+
+    const records = await db
+      .collection("patient_records")
+      .find({ patient_id: id })
+      .sort({ date: -1 })
+      .toArray();
+
+    res.status(200).json(records);
+  } catch (err) {
+    console.error("Error fetching timeline:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+

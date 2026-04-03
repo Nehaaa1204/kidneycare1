@@ -4,6 +4,7 @@ import {
   getAllPatients,
   getSignedUpPatients,
   deletePatient,
+  getPatientTimeline
 } from "../controllers/patientController.js";
 
 const router = express.Router();
@@ -11,6 +12,8 @@ const router = express.Router();
 router.post("/", addPatient);
 router.get("/", getAllPatients);
 router.get("/signedup", getSignedUpPatients);
+router.get("/:id/timeline", getPatientTimeline);
+
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;

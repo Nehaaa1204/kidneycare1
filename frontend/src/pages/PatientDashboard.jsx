@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Aurora from "../components/Aurora";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
@@ -13,11 +13,8 @@ import {
   Divider,
   Typography,
   CircularProgress,
-  TextField,
-  IconButton,
-  Avatar,
 } from "@mui/material";
-import { FileUp, Activity, ClipboardList, MessageCircle, Send, Bot, User } from "lucide-react";
+import { FileUp, Activity, ClipboardList } from "lucide-react";
 import PatientImaging from "../components/PatientImaging";
 import CKDPrediction from "../components/CKDPrediction";
 import { getNotes } from "../api/api";
@@ -38,8 +35,6 @@ const darkTheme = createTheme({
   },
 });
 
-// AI Assistant Chatbot Component
-
 export default function PatientDashboard() {
   const auroraColors = ["#0A0D5A", "#8B0000", "#0A0D5A", "#8B0000", "#0A0D5A"];
   const [selected, setSelected] = useState("Doctor Recommendations");
@@ -49,11 +44,11 @@ export default function PatientDashboard() {
 
   useEffect(() => {
     if (selected === "Doctor Recommendations" && user) {
-      console.log("Fetching notes for patientId:", user.username);
+      console.log("Fetching notes for patientId:", user.username); // 👈 Add this
       setLoading(true);
       getNotes(user.username)
         .then((res) => {
-          console.log("Fetched notes:", res.data);
+          console.log("Fetched notes:", res.data); // 👈 Add this
           setRecommendations(res.data || []);
         })
         .catch((err) => console.error("Error fetching notes:", err))
@@ -61,14 +56,13 @@ export default function PatientDashboard() {
     }
   }, [selected, user]);
 
+
   const renderContent = () => {
     switch (selected) {
       case "Kidney Imaging":
         return <PatientImaging />;
       case "CKD Prediction":
         return <CKDPrediction />;
-      case "AI Assistant":
-        return <AIAssistant />;
       case "Doctor Recommendations":
         return (
           <Box

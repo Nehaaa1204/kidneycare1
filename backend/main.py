@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import boto3
@@ -154,130 +153,72 @@ def fallback_medical_parse(text: str) -> dict:
     result = {"name": None, "age": None, "sex": None, "creatinine": None, "urea": None, "egfr": None}
     if not text: return result
 
-    # Sabse pehle pehli 10 lines nikaalein kyunki name wahi hota hai
+    # Use first 12 lines for header info like Name/Age
     lines = text.split('\n')
-    header_text = "\n".join(lines[:10])
+    header_text = "\n".join(lines[:12])
 
-    # ============ PATIENT NAME REGEX ============
-    # ============ PATIENT NAME (DYNAMICE KEYWORDS) ============
+    # ============ 1. NAME EXTRACTION (Multi-Anchor) ============
     name_patterns = [
-        # 1. Matches labels like "Patient Name:", "Name:", "Pateint Name:" followed by the name
-        # Isme 'Name' keyword bhi cover ho gaya hai
-        r"(?:Patient\s*Name|PATIENT\s*NAME|Pateint\s*Name|Name)\s*[:\-]*\s*([A-Z\s\.]{3,})(?=\s+(?:NIC|Age|ID|Sex|Gender|$))",
-        
-        # 2. Matches "Mr.PARAMJEET SINGH" or "Mrs. Sha Bosco" (direct titles)
-        r"(?:MR\.|MRS\.|MS\.|DR\.)\s*([A-Z\s\.]{3,})", 
-        
-        # 3. Fallback: Agar pehli line hi capital letters mein ho (Header check)
+        # Pattern A: "Label : Name" (Garg/Minhaj style)
+        r"(?:Patient\s*Name|Pateint\s*Name|Name)\s*[:\-]\s*(.*?)(?=Pateint\s*ID|Age|Gender|Sex|Lab|Ref|$)",
+        # Pattern B: Direct Title (Matches "Mr. Paramjeet Singh")
+        r"(?:MR\.|MRS\.|MS\.|DR\.)\s*([A-Z\s\.]{3,})",
+        # Pattern C: All Caps lines (Common in simple headers)
         r"^([A-Z\s\.]{5,})$"
     ]
 
     for pattern in name_patterns:
         match = re.search(pattern, header_text, re.I | re.M)
         if match:
-            # group(1) asli name return karega label ke baad wala
             raw_name = match.group(1).strip()
             cleaned = clean_person_name(raw_name)
             if cleaned:
                 result["name"] = cleaned
-                logger.info(f"✅ Found Name: {cleaned}")
-                break
-    # ============ AGE ============
-    # Matches 'Age', 'Years', 'Yrs' or just a number followed by Y
-    # age_patterns = [
-    #     # Garg Path Lab specialized: "60 Y/Male" or "60 YRS/Male"
-    #     r"(\d{1,3})\s*[Yy](?:ears?|rs)?\s*/", 
-        
-    #     # General formats
-    #     r"Age\s*[:\-]*\s*(\d{1,3})", 
-    #     r"(\d{1,3})\s*(?:Years?|Yrs?|Y/O)\b",
-        
-    #     # Dr. Lal PathLabs specialized: "Age: 71 Years"
-    #     r"Age\s*[:\-]*\s*(\d{1,3})\s*Years?",
-    # ]
-    # for pattern in age_patterns:
-    #     match = re.search(pattern, clean_text, re.I)
-    #     if match:
-    #         val = int(match.group(1))
-    #         if 0 < val < 120:
-    #             result["age"] = val
-    #             break
-    age_match = re.search(r"(\d{1,3})\s*[Yy](?:ears?|rs)?(?:\s*/)?", text)
-    if age_match:
-        result["age"] = int(age_match.group(1))
-    # ============ GENDER / SEX ============
-    # Matches M/F, Male/Female, often found near Age
-    # sex_patterns = [
-    #     r"(?:Sex|Gender)\s*[:\-]*\s*(Male|Female|M|F)\b",
-    #     r"/\s*(Male|Female|M|F)\b", # Handles 45/Male
-    #     r"\b(Male|Female)\b" # Pure keyword search
-    # ]
-    # for pattern in sex_patterns:
-    #     match = re.search(pattern, clean_text, re.I)
-    #     if match:
-    #         gender = match.group(1).strip().upper()
-    #         result["sex"] = "Female" if gender.startswith("F") else "Male"
-    #         break
-    gender_match = re.search(r"(?:Gender|Sex)\s*[:\-]*\s*(Male|Female|M|F)|/\s*(Male|Female|M|F)", text, re.I)
-    if gender_match:
-        g = gender_match.group(1) or gender_match.group(2)
-        result["sex"] = "Female" if g.strip().upper().startswith("F") else "Male"
-    # ============ Lab Values - OPTIMIZED FOR MINHAJ LAB TABLE FORMAT ============
-    
-    # Pattern for UREA: "UREA (SERUM)  16.6 - 48.5  mg/dL  267"
-    urea_patterns = [
-        r"UREA\s*\(SERUM\).*?mg/dL\s+(\d+\.?\d*)",
-        r"UREA\(SERUM\).*?(\d+\.?\d*)\s*(?=mg|$)",
-        r"UREA.*?(\d+)\s*(?=\n|mg|CREATININE)",
-    ]
-    
-    for pattern in urea_patterns:
-        urea_match = re.search(pattern, text, re.I | re.DOTALL)
-        if urea_match:
-            urea_val = float(urea_match.group(1))
-            if 0.1 < urea_val < 500:
-                result["urea"] = round(urea_val, 2)
-                logger.info(f"✅ Found Urea: {urea_val}")
-                break
-    # urea_match = re.search(r"UREA.*?(\d+)", text, re.I | re.DOTALL)
-    # if urea_match:
-    #     result["urea"] = float(urea_match.group(1))
-    
-    # Pattern for CREATININE: "CREATININE (SERUM)  0.5 - 1.0  mg/dL  13.0"
-    creat_patterns = [
-        r"CREATININE\s*\(SERUM\).*?mg/dL\s+(\d+\.?\d*)",
-        r"CREATININE\(SERUM\).*?(\d+\.?\d*)\s*(?=mg|$)",
-        r"CREATININE.*?(\d+\.?\d*)\s*(?=\n|mg|eGFR)",
-    ]
-    
-    for pattern in creat_patterns:
-        creat_match = re.search(pattern, text, re.I | re.DOTALL)
-        if creat_match:
-            creat_val = float(creat_match.group(1))
-            if 0.1 < creat_val < 20:
-                result["creatinine"] = round(creat_val, 2)
-                logger.info(f"✅ Found Creatinine: {creat_val}")
-                break
-    # creat_match = re.search(r"CREATININE.*?(\d+\.\d+|\d+)", text, re.I | re.DOTALL)
-    # if creat_match:
-    #     result["creatinine"] = float(creat_match.group(1))
-    # eGFR patterns
-    egfr_patterns = [
-        r"eGFR\s*\(See\s+Below\).*?mL/min/1\.73cm\s+(\d+\.?\d*)",
-        r"eGFR\s*:?\s*(\d+\.?\d*)",
-        r"eGFR.*?(\d+\.?\d*)\s*(?=mL|$)",
-    ]
-    
-    for pattern in egfr_patterns:
-        egfr_match = re.search(pattern, text, re.I | re.DOTALL)
-        if egfr_match:
-            egfr_val = float(egfr_match.group(1))
-            if 0.1 < egfr_val < 200:
-                result["egfr"] = round(egfr_val, 2)
-                logger.info(f"✅ Found eGFR: {egfr_val}")
                 break
 
-    logger.info(f"📊 Final parsed result: {result}")
+    # ============ 2. AGE & SEX (Multi-Anchor) ============
+    # Pattern A: Combined format "60 Y / Male" or "25/F"
+    age_sex_comb = re.search(r"(\d{1,3})\s*[Yy](?:rs|ears)?\s*[\/\s]\s*(Male|Female|M|F)", text, re.I)
+    if age_sex_comb:
+        result["age"] = int(age_sex_comb.group(1))
+        result["sex"] = "Female" if age_sex_comb.group(2).upper().startswith("F") else "Male"
+    else:
+        # Pattern B: Separate "Age: 60"
+        age_only = re.search(r"(?:Age|Age/Sex)\s*[:\-]*\s*(\d{1,3})", text, re.I)
+        if age_only: result["age"] = int(age_only.group(1))
+        
+        # Pattern C: Separate "Sex: Male"
+        sex_only = re.search(r"(?:Sex|Gender)\s*[:\-]*\s*(Male|Female|M|F)", text, re.I)
+        if sex_only:
+            g = sex_only.group(1).strip().upper()
+            result["sex"] = "Female" if g.startswith("F") else "Male"
+
+    # ============ 3. LAB VALUES (Value-After-Keyword) ============
+    # We look for the keyword, then skip non-numeric junk until we find the result
+    
+    # UREA: Look for "UREA", skip units/ranges, find decimal or number
+    urea_match = re.search(r"(?:UREA|BLOOD\s*UREA).*?(\d{1,3}(?:\.\d+)?)", text, re.I | re.DOTALL)
+    if urea_match:
+        val = float(urea_match.group(1))
+        if 5 < val < 500: result["urea"] = round(val, 2)
+
+    # CREATININE: Look for "CREATININE", skip junk, find decimal
+    # Note: We look for a decimal (e.g., 3.2) specifically to avoid picking up ID numbers
+    creat_match = re.search(r"CREATININE.*?(\d{1,2}\.\d+)", text, re.I | re.DOTALL)
+    if not creat_match: # Fallback for integer creatinine (rare but possible)
+        creat_match = re.search(r"CREATININE.*?(\d{1,2})", text, re.I | re.DOTALL)
+        
+    if creat_match:
+        val = float(creat_match.group(1))
+        if 0.1 < val < 25: result["creatinine"] = round(val, 2)
+
+    # eGFR: Find "eGFR" then the next number
+    egfr_match = re.search(r"eGFR.*?(\d{1,3}(?:\.\d+)?)", text, re.I | re.DOTALL)
+    if egfr_match:
+        val = float(egfr_match.group(1))
+        if 1 < val < 250: result["egfr"] = round(val, 2)
+
+    logger.info(f"📊 Final Multi-Lab Parsed result: {result}")
     return result
 
 def calculate_egfr(creatinine: float, age: int, sex: str) -> Optional[float]:
@@ -351,7 +292,7 @@ def get_ml_prediction(age, creatinine, urea):
         ckd_probability = probabilities[1] 
         
         prediction_text = "CKD Likely" if ckd_probability > 0.5 else "Normal / Low Risk"
-        # confidence_str = f"{round(max(probabilities) * 100, 1)}%"
+        confidence_str = f"{round(max(probabilities) * 100, 1)}%"
         
         return prediction_text, confidence_str
     except Exception as e:
@@ -420,30 +361,25 @@ async def analyze(file: UploadFile = File(...)):
         risk, stage = classify_ckd(current_egfr)
 
         # --- 3. DYNAMIC ML PREDICTION ---
-     #   ml_prediction = "Insufficient Data"
-      #  ml_confidence = "N/A"
+        ml_prediction = "Insufficient Data"
+        ml_confidence = "N/A"
 
         if model and all([age, creatinine]):
             try:
-                # Urea agar missing hai toh default 20.0 (Normal)
                 safe_urea = float(urea) if urea else 20.0
-                
-                # 🔥 FIX: Order must be [Age, Urea, Creatinine] 
-                # Kyunki Training isi order (age, bu, sc) mein hui hai
                 features = np.array([[float(age), float(safe_urea), float(creatinine)]])
                 
                 probs = model.predict_proba(features)[0]
-                
-                # ckd_model.pkl mein 0=CKD aur 1=NotCKD ho sakta hai 
-                # ya vice-versa. Neeche wala logic general 'Probability' check hai:
-                ckd_prob = probs[1] 
+                ckd_prob = probs[0]  # ✅ CKD probability
                 
                 ml_prediction = "CKD Detected" if ckd_prob > 0.5 else "Normal / Low Risk"
-                ml_confidence = f"{round(max(probs) * 100, 1)}%"
+                ml_confidence = f"{round(ckd_prob * 100, 1)}%"  # ✅ Only THIS line!
                 
+                logger.info(f"✅ ML Prediction: {ml_prediction} ({ml_confidence})")
+        
             except Exception as e:
-                logger.error(f"Ml Inference Error: {e}")
-                ml_prediction, ml_confidence = "Error in Prediction", "N/A"
+                logger.error(f"ML Error: {e}")
+                ml_prediction, ml_confidence = "Error", "N/A"
         # --- 4. RETURN EVERYTHING ---
         return {
             "patient": {
@@ -457,7 +393,7 @@ async def analyze(file: UploadFile = File(...)):
                 "egfr": current_egfr
             },
             "ckd": {"risk": risk, "stage": stage},
-            # "mlResult": {"prediction": ml_prediction, "confidence": ml_confidence},
+            "mlResult": {"prediction": ml_prediction, "confidence": ml_confidence},
             "is_estimated": is_estimated
         }
     except Exception as e:
@@ -533,4 +469,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

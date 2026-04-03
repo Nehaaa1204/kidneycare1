@@ -3,58 +3,118 @@ from flask_cors import CORS
 import joblib
 import pandas as pd
 import numpy as np
+import os
 
 app = Flask(__name__)
-CORS(app)  # This allows your React app to talk to this Python server
+CORS(app)
 
-# Load the brain files we just created
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 try:
-    model = joblib.load('ckd_model.pkl')
+    model         = joblib.load('ckd_model.pkl')
+    scaler        = joblib.load('scaler.pkl')
     model_columns = joblib.load('model_columns.pkl')
-    medians = joblib.load('medians.pkl')
-    print("Model and assets loaded successfully!")
+    medians       = joblib.load('medians.pkl')
+    print("✅ All model files loaded successfully!")
 except Exception as e:
-    print(f"Error loading model files: {e}")
+    print(f"❌ Error loading model files: {e}")
+    model = None
 
-@app.route('/predict', methods=['POST'],strict_slashes=False)
-@app.route('/predict/', methods=['POST', 'OPTIONS'])
+@app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # 1. Get data sent from React
+        if model is None:
+            return jsonify({'error': 'Model not loaded'}), 500
+
         data = request.get_json()
-        
-        # 2. Map your extracted names to the dataset names
-        # dataset uses 'sc' for creatinine, 'bu' for urea, etc.
-        mapping = {
-            'creatinine': 'sc',
-            'urea': 'bu',
-            'age': 'age'
+        print(f"📥 Received: {data}")
+
+        FULL_DEFAULTS = {
+            "age":   medians.get("age",  50)  if isinstance(medians, dict) else 50,
+            "bu":    medians.get("bu",   40)  if isinstance(medians, dict) else 40,
+            "sc":    medians.get("sc",   1.2) if isinstance(medians, dict) else 1.2,
+            "bp":    80.0,
+            "sg":    1.020,
+            "al":    0.0,
+            "su":    0.0,
+            "rbc":   1.0,
+            "pc":    1.0,
+            "pcc":   0.0,
+            "ba":    0.0,
+            "bgr":   100.0,
+            "sod":   137.0,
+            "pot":   4.5,
+            "hemo":  13.5,
+            "pcv":   44.0,
+            "wc":    8000.0,
+            "rc":    5.0,
+            "htn":   0.0,
+            "dm":    0.0,
+            "cad":   0.0,
+            "appet": 1.0,
+            "pe":    0.0,
+            "ane":   0.0,
         }
 
-        # 3. Create a template row filled with medians
-        input_row = pd.DataFrame([medians], columns=model_columns)
-
-        # 4. Fill in the values we actually extracted
+        mapping = {
+            'creatinine': 'sc',
+            'urea':       'bu',
+            'age':        'age'
+        }
         for key, value in data.items():
-            if key in mapping and mapping[key] in input_row.columns:
-                if value is not None and str(value).lower() != 'n/a':
-                    input_row[mapping[key]] = float(value)
+            col = mapping.get(key)
+            if col and value is not None:
+                FULL_DEFAULTS[col] = float(value)
+                print(f"✅ Set {col} = {value}")
 
-        # 5. Make the prediction
-        prediction = model.predict(input_row)[0]
-        probability = model.predict_proba(input_row)[0][1]
+        input_row = pd.DataFrame(
+            [[FULL_DEFAULTS[col] for col in model_columns]],
+            columns=model_columns
+        )
 
-        # 6. Send result back to React
+        input_scaled = pd.DataFrame(
+            scaler.transform(input_row),
+            columns=model_columns
+        )
+
+        prediction    = model.predict(input_scaled)[0]
+        probabilities = model.predict_proba(input_scaled)[0]
+
+        ckd_probability    = round(float(probabilities[0]) * 100, 1)
+        normal_probability = round(float(probabilities[1]) * 100, 1)
+        ckd_detected       = bool(prediction == 0)
+        confidence         = ckd_probability if ckd_detected else normal_probability
+
+        print(f"🎯 {'CKD' if ckd_detected else 'Normal'} | {confidence}%")
+
         return jsonify({
-            'ckd_detected': bool(prediction),
-            'confidence': round(float(probability) * 100, 2),
-            'message': "CKD Likely" if prediction == 1 else "Normal / Low Risk"
+            'ckd_detected':       ckd_detected,
+            'confidence':         round(confidence, 1),
+            'message':            "CKD Detected" if ckd_detected else "Normal / Low Risk",
+            'ckd_probability':    ckd_probability,
+            'normal_probability': normal_probability
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 400
+
+@app.route('/debug', methods=['GET'])
+def debug():
+    return jsonify({
+        'model_columns':  list(model_columns),
+        'num_columns':    len(model_columns),
+        'medians_keys':   list(medians.keys()) if isinstance(medians, dict) else str(type(medians)),
+        'medians_length': len(medians)
+    })
+
 @app.route('/test', methods=['GET'])
 def test():
-    return jsonify({"status": "Server is alive!"})
+    return jsonify({
+        "status":       "Server is alive!",
+        "model_loaded": model is not None
+    })
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001, host='0.0.0.0')

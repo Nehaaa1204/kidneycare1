@@ -8,6 +8,9 @@ import Aurora from "../components/Aurora";
 import ViewCKDPrediction from "../components/ViewCKDPrediction"; // 🆕 Import added
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import PatientTimeline from "../components/PatientTimeline";
+
+
 
 import {
   Box,
@@ -57,6 +60,8 @@ export default function DoctorDashboard() {
         return <PatientList />;
       case "View CKD Prediction": // 🆕 Added new case
         return <ViewCKDPrediction />;
+      case "Patient Timeline": // 🆕 Added new case
+        return <PatientTimeline />;
       default:
         return null;
     }
@@ -65,12 +70,13 @@ export default function DoctorDashboard() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
+      <Box sx={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }}>
       <Aurora 
       colorStops={auroraColors}
        amplitude={2.0} 
        blend={0.5}
         speed={2.0} />
-
+      </Box>
       <Box
         sx={{
           position: "relative",
@@ -108,6 +114,7 @@ export default function DoctorDashboard() {
                 { name: "Professional Notes", icon: <NotebookPen size={20} /> },
                 { name: "Patient List", icon: <Users size={20} /> },
                 { name: "View CKD Prediction", icon: <Activity size={20} /> }, // 🆕 New option
+                { name: "Patient Timeline", icon: <Activity size={20} /> }, // 🆕 New option
               ].map((item) => (
                 <ListItemButton
                   key={item.name}
@@ -146,18 +153,20 @@ export default function DoctorDashboard() {
 
           {/* Main Content */}
           <Box
-            sx={{
-              flexGrow: 1,
-              p: 2,
-              borderRadius: 3,
-              backgroundColor: "rgba(255,255,255,0.05)",
-              boxShadow: "0 0 15px rgba(0,0,0,0.3)",
-              backdropFilter: "blur(10px)",
-              overflowY: "auto",
-            }}
-          >
-            {renderContent()}
-          </Box>
+          sx={{
+          flexGrow: 1,
+          p: 2,
+          borderRadius: 3,
+          backgroundColor: "rgba(255,255,255,0.05)",
+          boxShadow: "0 0 15px rgba(0,0,0,0.3)",
+          backdropFilter: "blur(10px)",
+          overflowY: "auto",
+          }}
+>
+        {renderContent()}
+
+</Box>
+
         </Box>
       </Box>
     </ThemeProvider>

@@ -10,6 +10,7 @@ cloudinary.config({
   api_secret: process.env.CLOUD_API_SECRET,
 });
 
+
 const storage = new CloudinaryStorage({
   cloudinary,
   params: { folder: "medical_images", allowed_formats: ["jpg", "png", "jpeg"] },
@@ -19,33 +20,79 @@ export const upload = multer({ storage });
 export const uploadScan = async (req, res) => {
   try {
     const db = getDB();
-    const patientId = req.params.patientId;
-    
-    const imageUrl = req.body.imageUrl || req.file?.path;
-    
-    if (!imageUrl) {
-      return res.status(400).json({ error: "No image URL provided" });
+
+    // ✅ Add this check
+    if (!db) {
+      return res.status(500).json({ error: "Database not connected" });
     }
 
+    const patientId = req.params.patientId;
+    const {
+      ckdDetected, ckdProbability, normalProbability,
+      egfr, ckdStage, message, imageUrl
+    } = req.body;
+
+    // ✅ Log what we received
+    console.log("📥 uploadScan called for patient:", patientId);
+    console.log("📥 body:", req.body);
+
     const scan = {
-      patientIdImaging: patientId,  // ✅ matches your MongoDB field name
-      imageUrl: imageUrl,
-      uploadedAt: new Date(),
-    };
+  patientId,
+
+  // prediction
+  ckdDetected: ckdDetected === true || ckdDetected === "true",
+  prediction: ckdDetected ? "CKD" : "Normal",
+
+  // probabilities
+  ckdProbability: ckdProbability ? parseFloat(ckdProbability) : null,
+  normalProbability: normalProbability ? parseFloat(normalProbability) : null,
+
+  // medical data
+  egfr: egfr ? parseFloat(egfr) : null,
+  ckdStage: ckdStage || null,
+
+  // doctor + notes
+  message: message || "",
+  doctor_comment: "",
+
+  // image
+  imageUrl: imageUrl || req.file?.path,
+
+  // time
+  uploadedAt: new Date(),
+};
 
     await db.collection("scans").insertOne(scan);
+  // 🔥 SAVE FOR TIMELINE
+  await db.collection("patient_records").insertOne({
+  patient_id: patientId,
+  date: new Date(),
+
+  // CKD info
+  prediction: ckdDetected ? "CKD" : "Normal",
+  risk_score: ckdProbability ? parseFloat(ckdProbability) * 100 : 0,
+
+  // medical info
+  egfr: egfr || null,
+  ckdStage: ckdStage || null,
+
+  doctor_comment: "",
+  imageUrl: imageUrl || req.file?.path
+});
+
     res.json({ success: true, scan });
+
   } catch (err) {
+    console.error("❌ uploadScan error:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
-
 export const getScansByPatient = async (req, res) => {
   try {
     const db = getDB();
     const scans = await db
       .collection("scans")
-      .find({ patientIdImaging: req.params.patientId })  // ✅ fixed field name
+      .find({ patientId: req.params.patientId })
       .sort({ uploadedAt: -1 })
       .toArray();
     res.json(scans);
@@ -53,34 +100,41 @@ export const getScansByPatient = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 export const analyzeImage = async (req, res) => {
   try {
-    console.log("📩 Received analyze request...");
-
     const imageUrl = req.file?.path || req.body.imageUrl;
-    console.log("🖼️ Image URL received in backend:", imageUrl);
+    if (!imageUrl) return res.status(400).json({ error: "No image URL" });
 
-    if (!imageUrl) {
-      console.log("❌ No image URL received!");
-      return res.status(400).json({ error: "No image URL" });
-    }
-
-    // 🔹 Send to Flask for prediction
     const flaskRes = await fetch("http://127.0.0.1:8000/predict", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageUrl }),
     });
 
-    console.log("📨 Sent to Flask... waiting for response...");
-
     const result = await flaskRes.json();
-    console.log("✅ Flask result received:", result);
-
     res.json(result);
   } catch (err) {
-    console.error("❌ Error analyzing image:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
+export const getCKDPredictions = async (req, res) => {
+  try {
+    const db = getDB();
+    const patientId = req.params.patientId;
+    
+    console.log("Fetching CKD predictions for patient:", patientId);
+    
+    const predictions = await db
+      .collection("scans")
+      .find({ patientId: patientId })
+      .sort({ uploadedAt: -1 })
+      .toArray();
+    
+    console.log("Found predictions:", predictions.length);
+    res.json(predictions);
+  } catch (err) {
+    console.error("Error fetching predictions:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
