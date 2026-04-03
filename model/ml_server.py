@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # Load SavedModel
 model = tf.saved_model.load(
-    r"C:\Users\hp\Desktop\kidneycared\kidneycared\model\kidney_ct_finetuned"
+    r"model\kidney_ct_finetuned"
 )
 infer = model.signatures["serving_default"]
 
