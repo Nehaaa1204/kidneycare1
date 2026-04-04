@@ -14,7 +14,7 @@ router.post("/test", async (req, res) => {
     
     if (!imageUrl) return res.status(400).json({ error: "imageUrl missing" });
 
-    const mlResponse = await axios.post("https://kidneycare1-2.onrender.com/predict", { imageUrl });
+    const mlResponse = await axios.post("https://kidneycare1-5.onrender.com/predict", { imageUrl });
     console.log("✅ ML response:", mlResponse.data);
     res.json(mlResponse.data);
 
