@@ -48,7 +48,7 @@ export default function PatientImaging() {
 
       // Step 3: Analyze CT scan via ml_server.py
       const analyzeRes = await axios.post(
-        "https://kidneycare1-backend.onrender.com/api/scans/test",
+        "https://kidneycare1-backend.onrender.com/api/scans/analyze",
         { imageUrl: uploadedUrl }
       );
       console.log("🧠 Analysis:", analyzeRes.data);
