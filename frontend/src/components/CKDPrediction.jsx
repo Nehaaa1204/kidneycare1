@@ -154,7 +154,7 @@ export default function CKDPrediction() {
 
     try {
       // Step 1: Get OCR results from FastAPI
-      const response = await fetch("http://127.0.0.1:8000/analyze", { 
+      const response = await fetch("https://kidneycare1-2.onrender.com/analyze", { 
         method: "POST", 
         body: formData 
       });
