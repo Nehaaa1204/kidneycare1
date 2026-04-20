@@ -6,8 +6,10 @@ import {
   Button,
   Collapse,
   Divider,
+  InputAdornment,
+  TextField,
 } from "@mui/material";
-import { Users, Trash2, StickyNote } from "lucide-react";
+import { Users, Trash2, StickyNote, Search } from "lucide-react";
 
 
 
@@ -15,6 +17,7 @@ export default function PatientList() {
   const [patients, setPatients] = useState([]);
   const [openNotes, setOpenNotes] = useState({});
   const [notesData, setNotesData] = useState({});
+  const [search, setSearch] = useState("");
 
   // Fetch patients
   useEffect(() => {
@@ -28,6 +31,17 @@ export default function PatientList() {
     };
     fetchPatients();
   }, []);
+
+  // Filter patients based on search query
+  const filteredPatients = patients.filter((p) => {
+    const query = search.toLowerCase();
+    return (
+      p.name?.toLowerCase().includes(query) ||
+      String(p.id).toLowerCase().includes(query) ||
+      String(p.age).toLowerCase().includes(query) ||
+      p.gender?.toLowerCase().includes(query)
+    );
+  });
 
   // Remove patient
   const remove = async (id) => {
@@ -87,10 +101,47 @@ export default function PatientList() {
         </Typography>
       </Box>
 
+      {/* Search Bar */}
+      <TextField
+        fullWidth
+        placeholder="Search by name, ID, age, or gender..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        size="small"
+        sx={{
+          mb: 2,
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            color: "#fff",
+            backgroundColor: "rgba(255,255,255,0.07)",
+            "& fieldset": {
+              borderColor: "rgba(255,255,255,0.2)",
+            },
+            "&:hover fieldset": {
+              borderColor: "rgba(255,255,255,0.4)",
+            },
+            "&.Mui-focused fieldset": {
+              borderColor: "rgba(255,255,255,0.6)",
+            },
+          },
+          "& .MuiInputBase-input::placeholder": {
+            color: "#aaa",
+            opacity: 1,
+          },
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <Search size={18} color="#aaa" />
+            </InputAdornment>
+          ),
+        }}
+      />
+
       {/* Patient Table */}
-      {patients.length === 0 ? (
+      {filteredPatients.length === 0 ? (
         <Typography sx={{ color: "#bbb", textAlign: "center", mt: 2 }}>
-          No patients found.
+          {search ? "No patients match your search." : "No patients found."}
         </Typography>
       ) : (
         <Box
@@ -105,7 +156,7 @@ export default function PatientList() {
             overflowY: "auto",
           }}
         >
-          {patients.map((p) => (
+          {filteredPatients.map((p) => (
             <Box
               key={p.id}
               sx={{
@@ -130,7 +181,7 @@ export default function PatientList() {
                     {p.name}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "#ccc" }}>
-                    ID: {p.id}| Age: {p.age} | Gender: {p.gender}
+                    ID: {p.id} | Age: {p.age} | Gender: {p.gender}
                   </Typography>
                 </Box>
 
