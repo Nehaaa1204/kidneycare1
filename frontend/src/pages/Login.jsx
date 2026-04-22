@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../api/api";
 import { useAuth } from "../context/AuthContext";
-// ✅ Import icons
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { InputAdornment, IconButton } from "@mui/material";
 import {
@@ -21,11 +20,12 @@ import {
   Select,
   Link,
 } from "@mui/material";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
 import Aurora from "../components/Aurora";
 import GradientText from "../components/GradientText";
 
-// Styled Components
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
@@ -60,7 +60,6 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
   },
 }));
 
-// Dark theme
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
@@ -82,17 +81,29 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // ✅ ALL STATE VARIABLES INSIDE COMPONENT
   const [form, setForm] = useState({
     username: "",
     password: "",
     role: "doctor",
   });
   const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false); // ✅ PASSWORD VISIBILITY STATE
-  const auroraColors = ["#0A0D5A", "#8B0000", "#0A0D5A"];
+  const [showPassword, setShowPassword] = useState(false);
 
-  // ✅ PASSWORD VISIBILITY HANDLERS
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
+
+  const showSnackbar = (message, severity = "info") => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") return;
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -116,21 +127,24 @@ export default function Login() {
     try {
       const { data } = await loginUser(form);
       if (data.success) {
-        login(data.user);
-        navigate("/dashboard");
+        showSnackbar("Login successful! Redirecting...", "success");
+        setTimeout(() => {
+          login(data.user);
+          navigate("/dashboard");
+        }, 1000);
       } else {
-        alert(data.error || "Login failed");
+        showSnackbar(data.error || "Invalid credentials. Please try again.", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Server error during login");
+      showSnackbar("Server error. Please try again later.", "error");
     }
   };
 
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      {/* Aurora Background */}
+
       <Aurora
         colorStops={["#0A0D5A", "#8B0000", "#0A0D5A", "#8B0000", "#0A0D5A"]}
         amplitude={2.0}
@@ -151,13 +165,7 @@ export default function Login() {
           }}
         >
           Welcome to Kidney Care
-          <p
-            style={{
-              textAlign: "center",
-              fontSize: "1.5rem",
-              fontWeight: "normal",
-            }}
-          >
+          <p style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "normal" }}>
             Multilevel Kidney Diagnostics
           </p>
         </GradientText>
@@ -176,7 +184,6 @@ export default function Login() {
             onSubmit={handleSubmit}
             sx={{ display: "flex", flexDirection: "column", gap: 2 }}
           >
-            {/* Username */}
             <FormControl>
               <FormLabel htmlFor="username">Username</FormLabel>
               <TextField
@@ -190,13 +197,12 @@ export default function Login() {
               />
             </FormControl>
 
-            {/* ✅ PASSWORD WITH EYE ICON */}
             <FormControl fullWidth>
               <FormLabel sx={{ mb: 1 }}>Password</FormLabel>
               <TextField
                 id="password"
                 placeholder="Enter your password"
-                type={showPassword ? "text" : "password"} // ✅ Toggle between text and password
+                type={showPassword ? "text" : "password"}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 error={!!errors.password}
@@ -231,7 +237,6 @@ export default function Login() {
               />
             </FormControl>
 
-            {/* Role */}
             <FormControl>
               <FormLabel htmlFor="role">Role</FormLabel>
               <Select
@@ -273,6 +278,23 @@ export default function Login() {
           </Typography>
         </Card>
       </SignInContainer>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%", borderRadius: "10px", fontWeight: 500 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
     </ThemeProvider>
   );
-
+}
