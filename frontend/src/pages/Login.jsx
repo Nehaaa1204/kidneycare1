@@ -23,8 +23,8 @@ import {
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
-import Aurora from "../components/Aurora";
-import GradientText from "../components/GradientText";
+
+// ✅ NO Aurora or GradientText needed — real bg image replaces them
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
@@ -34,29 +34,41 @@ const Card = styled(MuiCard)(({ theme }) => ({
   padding: theme.spacing(4),
   gap: theme.spacing(2),
   margin: "auto",
-  boxShadow:
-    "hsla(220, 30%, 5%, 0.5) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.08) 0px 15px 35px -5px",
+  background: "rgba(10, 15, 30, 0.75)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  border: "1px solid rgba(56, 189, 248, 0.15)",
+  borderRadius: "24px",
+  boxShadow: "0 0 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04) inset",
   [theme.breakpoints.up("sm")]: {
-    width: "450px",
+    width: "460px",
   },
 }));
 
 const SignInContainer = styled(Stack)(({ theme }) => ({
-  height: "100vh",
+  minHeight: "100vh",
   padding: theme.spacing(4),
   position: "relative",
   zIndex: 1,
   alignItems: "center",
   justifyContent: "center",
+
+  // ✅ Real kidney anatomy background image
+  backgroundImage: `url('https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=1920&q=90')`,
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat",
+  backgroundAttachment: "fixed",
+
+  // ✅ Dark overlay on top of image so card is readable
   "&::before": {
     content: '""',
     display: "block",
     position: "absolute",
-    zIndex: -1,
     inset: 0,
-    backgroundImage:
-      "radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
-    backgroundRepeat: "no-repeat",
+    zIndex: -1,
+    background:
+      "linear-gradient(135deg, rgba(2,8,23,0.82) 0%, rgba(7,20,40,0.78) 50%, rgba(2,8,23,0.85) 100%)",
   },
 }));
 
@@ -67,14 +79,43 @@ const darkTheme = createTheme({
     secondary: { main: "#10b981" },
     background: {
       default: "#0f172a",
-      paper: "rgba(30, 41, 59, 0.95)",
+      paper: "rgba(10, 15, 30, 0.75)",
     },
     text: {
       primary: "#f1f5f9",
-      secondary: "#cbd5e1",
+      secondary: "#94a3b8",
     },
   },
-  divider: "rgba(14, 165, 233, 0.2)",
+  components: {
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-root": {
+            background: "rgba(30, 41, 59, 0.6)",
+            borderRadius: "12px",
+            "& fieldset": {
+              borderColor: "rgba(71, 85, 105, 0.4)",
+            },
+            "&:hover fieldset": {
+              borderColor: "#38bdf8",
+            },
+            "&.Mui-focused fieldset": {
+              borderColor: "#0ea5e9",
+              boxShadow: "0 0 0 3px rgba(56,189,248,0.1)",
+            },
+          },
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: {
+          background: "rgba(30, 41, 59, 0.6)",
+          borderRadius: "12px",
+        },
+      },
+    },
+  },
 });
 
 export default function Login() {
@@ -104,13 +145,8 @@ export default function Login() {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
-  const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const handleMouseDownPassword = (event) => {
-    event.preventDefault();
-  };
+  const handleClickShowPassword = () => setShowPassword(!showPassword);
+  const handleMouseDownPassword = (e) => e.preventDefault();
 
   const validateInputs = () => {
     const newErrors = {};
@@ -126,6 +162,7 @@ export default function Login() {
 
     try {
       const { data } = await loginUser(form);
+
       if (data.success) {
         showSnackbar("Login successful! Redirecting...", "success");
         setTimeout(() => {
@@ -133,11 +170,29 @@ export default function Login() {
           navigate("/dashboard");
         }, 1000);
       } else {
-        showSnackbar(data.error || "Invalid credentials. Please try again.", "error");
+        if (data.error === "User not found") {
+          showSnackbar("No account found with this username. Please check or sign up.", "error");
+        } else if (data.error === "Invalid password") {
+          showSnackbar("Incorrect password. Please try again.", "error");
+        } else if (data.error === "Role mismatch") {
+          showSnackbar(`Wrong role selected. This account is not registered as a ${form.role}.`, "warning");
+        } else {
+          showSnackbar(data.error || "Login failed. Please check your credentials.", "error");
+        }
       }
     } catch (err) {
       console.error(err);
-      showSnackbar("Server error. Please try again later.", "error");
+      if (err.response?.status === 404) {
+        showSnackbar("Username not found. Please check your username.", "error");
+      } else if (err.response?.status === 401) {
+        showSnackbar("Incorrect password. Please try again.", "error");
+      } else if (err.response?.status === 403) {
+        showSnackbar(`Wrong role selected. This account is not a ${form.role}.`, "warning");
+      } else if (err.response?.status === 500) {
+        showSnackbar("Server is down. Please try again later.", "error");
+      } else {
+        showSnackbar("Network error. Please check your connection.", "error");
+      }
     }
   };
 
@@ -145,47 +200,58 @@ export default function Login() {
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
 
-      <Aurora
-        colorStops={["#0A0D5A", "#8B0000", "#0A0D5A", "#8B0000", "#0A0D5A"]}
-        amplitude={2.0}
-        blend={0.5}
-        speed={2.0}
-      />
-
       <SignInContainer direction="column">
-        <GradientText
-          colors={["#10643eff", "#4079ff", "#10643eff", "#4079ff", "#10643eff"]}
-          animationSpeed={8}
-          showBorder={true}
-          style={{
-            textAlign: "center",
-            fontSize: "2.5rem",
-            fontWeight: "bold",
-            marginBottom: "2rem",
-          }}
-        >
-          Welcome to Kidney Care
-          <p style={{ textAlign: "center", fontSize: "1.5rem", fontWeight: "normal" }}>
+
+        {/* ✅ Branding above card */}
+        <Box sx={{ textAlign: "center", mb: 3 }}>
+          <Box sx={{
+            width: 60, height: 60, borderRadius: "50%",
+            background: "rgba(14,165,233,0.15)",
+            border: "2px solid rgba(56,189,248,0.4)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 1rem",
+            boxShadow: "0 0 20px rgba(56,189,248,0.2)",
+          }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+              stroke="#38bdf8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7z"/>
+              <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+          </Box>
+          <Typography sx={{
+            fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.02em",
+            background: "linear-gradient(135deg, #38bdf8, #34d399, #818cf8)",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>
+            Kidney Care
+          </Typography>
+          <Typography sx={{
+            fontSize: "0.72rem", color: "#475569",
+            letterSpacing: "0.12em", textTransform: "uppercase", mt: 0.5,
+          }}>
             Multilevel Kidney Diagnostics
-          </p>
-        </GradientText>
+          </Typography>
+        </Box>
 
         <Card variant="outlined">
-          <Typography
-            component="h1"
-            variant="h5"
-            sx={{ width: "100%", textAlign: "center" }}
-          >
-            Login
+          <Typography component="h1" variant="h6"
+            sx={{ width: "100%", textAlign: "center", color: "#f1f5f9", fontWeight: 600 }}>
+            Welcome back
+          </Typography>
+          <Typography sx={{ textAlign: "center", fontSize: "0.8rem", color: "#475569", mt: -1 }}>
+            Sign in to continue to your dashboard
           </Typography>
 
           <Box
             component="form"
             onSubmit={handleSubmit}
-            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+            sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
           >
             <FormControl>
-              <FormLabel htmlFor="username">Username</FormLabel>
+              <FormLabel sx={{ fontSize: "0.72rem", color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", mb: 0.75 }}>
+                Username
+              </FormLabel>
               <TextField
                 fullWidth
                 id="username"
@@ -198,7 +264,9 @@ export default function Login() {
             </FormControl>
 
             <FormControl fullWidth>
-              <FormLabel sx={{ mb: 1 }}>Password</FormLabel>
+              <FormLabel sx={{ fontSize: "0.72rem", color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", mb: 0.75 }}>
+                Password
+              </FormLabel>
               <TextField
                 id="password"
                 placeholder="Enter your password"
@@ -212,24 +280,18 @@ export default function Login() {
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
-                        aria-label="toggle password visibility"
                         onClick={handleClickShowPassword}
                         onMouseDown={handleMouseDownPassword}
                         edge="end"
                         sx={{
                           color: "#0ea5e9",
-                          "&:hover": {
-                            backgroundColor: "rgba(14, 165, 233, 0.1)",
-                            color: "#10b981",
-                          },
+                          "&:hover": { backgroundColor: "rgba(14,165,233,0.1)", color: "#10b981" },
                           transition: "all 0.2s ease",
                         }}
                       >
-                        {showPassword ? (
-                          <Visibility sx={{ fontSize: "20px" }} />
-                        ) : (
-                          <VisibilityOff sx={{ fontSize: "20px" }} />
-                        )}
+                        {showPassword
+                          ? <Visibility sx={{ fontSize: "20px" }} />
+                          : <VisibilityOff sx={{ fontSize: "20px" }} />}
                       </IconButton>
                     </InputAdornment>
                   ),
@@ -238,42 +300,60 @@ export default function Login() {
             </FormControl>
 
             <FormControl>
-              <FormLabel htmlFor="role">Role</FormLabel>
+              <FormLabel sx={{ fontSize: "0.72rem", color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", mb: 0.75 }}>
+                I am a
+              </FormLabel>
               <Select
                 fullWidth
                 id="role"
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
               >
-                <MenuItem value="doctor">Doctor</MenuItem>
-                <MenuItem value="patient">Patient</MenuItem>
+                <MenuItem value="doctor">🩺 Doctor</MenuItem>
+                <MenuItem value="patient">🧑‍⚕️ Patient</MenuItem>
               </Select>
             </FormControl>
 
-            <Button type="submit" fullWidth variant="contained">
-              Login
-            </Button>
-          </Box>
-
-          <Divider sx={{ my: 2 }}>
-            <Typography sx={{ color: "text.secondary" }}>or</Typography>
-          </Divider>
-
-          <Typography sx={{ textAlign: "center", mt: 2, color: "#fff" }}>
-            Don't have an account?{" "}
-            <Link
-              onClick={() => navigate("/signup")}
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
               sx={{
-                cursor: "pointer",
-                color: "#64b5f6",
+                mt: 1,
+                py: 1.4,
+                borderRadius: "12px",
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                letterSpacing: "0.03em",
+                background: "linear-gradient(135deg, #0ea5e9, #10b981)",
+                boxShadow: "0 4px 20px rgba(14,165,233,0.3)",
                 "&:hover": {
-                  color: "#10b981",
-                  textDecoration: "underline",
+                  background: "linear-gradient(135deg, #0284c7, #059669)",
+                  boxShadow: "0 6px 25px rgba(14,165,233,0.45)",
+                  transform: "translateY(-1px)",
                 },
                 transition: "all 0.2s ease",
               }}
             >
-              Sign up
+              Sign In
+            </Button>
+          </Box>
+
+          <Divider sx={{ my: 1, borderColor: "rgba(71,85,105,0.3)" }}>
+            <Typography sx={{ color: "#334155", fontSize: "0.72rem" }}>or</Typography>
+          </Divider>
+
+          <Typography sx={{ textAlign: "center", fontSize: "0.8rem", color: "#475569" }}>
+            Don't have an account?{" "}
+            <Link
+              onClick={() => navigate("/signup")}
+              sx={{
+                cursor: "pointer", color: "#38bdf8", fontWeight: 600,
+                "&:hover": { color: "#10b981" },
+                transition: "color 0.2s ease",
+              }}
+            >
+              Sign up free
             </Link>
           </Typography>
         </Card>
