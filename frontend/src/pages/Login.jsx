@@ -1,6 +1,45 @@
+import * as React from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { loginUser } from "../api/api";
+import { useAuth } from "../context/AuthContext";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
+import { InputAdornment, IconButton } from "@mui/material";
+import {
+  Box,
+  Button,
+  CssBaseline,
+  Divider,
+  FormControl,
+  FormLabel,
+  TextField,
+  Typography,
+  Stack,
+  Card as MuiCard,
+  MenuItem,
+  Select,
+  Link,
+} from "@mui/material";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
+import { styled, ThemeProvider, createTheme } from "@mui/material/styles";
+import Aurora from "../components/Aurora";
+import GradientText from "../components/GradientText";
 
-
-
+const Card = styled(MuiCard)(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
+  alignSelf: "center",
+  width: "100%",
+  padding: theme.spacing(4),
+  gap: theme.spacing(2),
+  margin: "auto",
+  boxShadow:
+    "hsla(220, 30%, 5%, 0.5) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.08) 0px 15px 35px -5px",
+  [theme.breakpoints.up("sm")]: {
+    width: "450px",
+  },
+}));
 
 const SignInContainer = styled(Stack)(({ theme }) => ({
   height: "100vh",
@@ -21,7 +60,6 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
   },
 }));
 
-// Dark theme
 const darkTheme = createTheme({
   palette: {
     mode: "dark",
@@ -43,17 +81,31 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  // ✅ ALL STATE VARIABLES INSIDE COMPONENT
   const [form, setForm] = useState({
     username: "",
     password: "",
     role: "doctor",
   });
   const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false); // ✅ PASSWORD VISIBILITY STATE
+  const [showPassword, setShowPassword] = useState(false);
   const auroraColors = ["#0A0D5A", "#8B0000", "#0A0D5A"];
 
-  // ✅ PASSWORD VISIBILITY HANDLERS
+  // ✅ Snackbar state
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
+
+  const showSnackbar = (message, severity = "info") => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") return;
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -77,21 +129,41 @@ export default function Login() {
     try {
       const { data } = await loginUser(form);
       if (data.success) {
-        login(data.user);
-        navigate("/dashboard");
+        showSnackbar("Login successful! Redirecting...", "success");
+        setTimeout(() => {
+          login(data.user);
+          navigate("/dashboard");
+        }, 1000);
       } else {
-        alert(data.error || "Login failed");
+        if (data.error === "User not found") {
+          showSnackbar("No account found with this username. Please check or sign up.", "error");
+        } else if (data.error === "Invalid password") {
+          showSnackbar("Incorrect password. Please try again.", "error");
+        } else if (data.error === "Role mismatch") {
+          showSnackbar(`Wrong role selected. This account is not registered as a ${form.role}.`, "warning");
+        } else {
+          showSnackbar(data.error || "Login failed. Please check your credentials.", "error");
+        }
       }
     } catch (err) {
       console.error(err);
-      alert("Server error during login");
+      if (err.response?.status === 404) {
+        showSnackbar("Username not found. Please check your username.", "error");
+      } else if (err.response?.status === 401) {
+        showSnackbar("Incorrect password. Please try again.", "error");
+      } else if (err.response?.status === 403) {
+        showSnackbar(`Wrong role selected. This account is not a ${form.role}.`, "warning");
+      } else if (err.response?.status === 500) {
+        showSnackbar("Server is down. Please try again later.", "error");
+      } else {
+        showSnackbar("Network error. Please check your connection.", "error");
+      }
     }
   };
 
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      {/* Aurora Background */}
       <Aurora
         colorStops={["#0A0D5A", "#8B0000", "#0A0D5A", "#8B0000", "#0A0D5A"]}
         amplitude={2.0}
@@ -137,7 +209,6 @@ export default function Login() {
             onSubmit={handleSubmit}
             sx={{ display: "flex", flexDirection: "column", gap: 2 }}
           >
-            {/* Username */}
             <FormControl>
               <FormLabel htmlFor="username">Username</FormLabel>
               <TextField
@@ -151,13 +222,12 @@ export default function Login() {
               />
             </FormControl>
 
-            {/* ✅ PASSWORD WITH EYE ICON */}
             <FormControl fullWidth>
               <FormLabel sx={{ mb: 1 }}>Password</FormLabel>
               <TextField
                 id="password"
                 placeholder="Enter your password"
-                type={showPassword ? "text" : "password"} // ✅ Toggle between text and password
+                type={showPassword ? "text" : "password"}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 error={!!errors.password}
@@ -192,7 +262,6 @@ export default function Login() {
               />
             </FormControl>
 
-            {/* Role */}
             <FormControl>
               <FormLabel htmlFor="role">Role</FormLabel>
               <Select
@@ -234,6 +303,24 @@ export default function Login() {
           </Typography>
         </Card>
       </SignInContainer>
+
+      {/* ✅ Snackbar - only addition */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%", borderRadius: "10px", fontWeight: 500 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
     </ThemeProvider>
   );
 }
