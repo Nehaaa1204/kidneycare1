@@ -88,9 +88,7 @@ export default function Login() {
   });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
-  const auroraColors = ["#0A0D5A", "#8B0000", "#0A0D5A"];
 
-  // ✅ Snackbar state
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -155,6 +153,8 @@ export default function Login() {
         showSnackbar(`Wrong role selected. This account is not a ${form.role}.`, "warning");
       } else if (err.response?.status === 500) {
         showSnackbar("Server is down. Please try again later.", "error");
+      } else if (err.code === "ERR_NETWORK" || !err.response) {
+        showSnackbar("Server is waking up, please wait 30s and try again. (Free tier delay)", "warning");
       } else {
         showSnackbar("Network error. Please check your connection.", "error");
       }
@@ -276,7 +276,7 @@ export default function Login() {
             </FormControl>
 
             <Button type="submit" fullWidth variant="contained">
-              Login
+              LOGIN
             </Button>
           </Box>
 
@@ -304,7 +304,6 @@ export default function Login() {
         </Card>
       </SignInContainer>
 
-      {/* ✅ Snackbar - only addition */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={4000}
