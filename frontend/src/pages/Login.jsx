@@ -133,30 +133,27 @@ export default function Login() {
           navigate("/dashboard");
         }, 1000);
       } else {
-        if (data.error === "User not found") {
-          showSnackbar("No account found with this username. Please check or sign up.", "error");
-        } else if (data.error === "Invalid password") {
-          showSnackbar("Incorrect password. Please try again.", "error");
-        } else if (data.error === "Role mismatch") {
-          showSnackbar(`Wrong role selected. This account is not registered as a ${form.role}.`, "warning");
-        } else {
-          showSnackbar(data.error || "Login failed. Please check your credentials.", "error");
-        }
+        showSnackbar(data.error || "Login failed. Please check your credentials.", "error");
       }
     } catch (err) {
       console.error(err);
-      if (err.response?.status === 404) {
-        showSnackbar("Username not found. Please check your username.", "error");
-      } else if (err.response?.status === 401) {
-        showSnackbar("Incorrect password. Please try again.", "error");
+      if (err.response?.status === 400) {
+        const backendError = err.response.data?.error;
+        if (backendError === "Invalid username or role") {
+          showSnackbar("Username not found or wrong role selected.", "error");
+        } else if (backendError === "Invalid password") {
+          showSnackbar("Incorrect password. Please try again.", "error");
+        } else {
+          showSnackbar(backendError || "Invalid credentials.", "error");
+        }
       } else if (err.response?.status === 403) {
-        showSnackbar(`Wrong role selected. This account is not a ${form.role}.`, "warning");
+        showSnackbar(err.response.data?.error, "warning");
       } else if (err.response?.status === 500) {
-        showSnackbar("Server is down. Please try again later.", "error");
+        showSnackbar("Server error. Please try again later.", "error");
       } else if (err.code === "ERR_NETWORK" || !err.response) {
-        showSnackbar("Server is waking up, please wait 30s and try again. (Free tier delay)", "warning");
+        showSnackbar("Server is waking up, please wait 30s and try again.", "warning");
       } else {
-        showSnackbar("Network error. Please check your connection.", "error");
+        showSnackbar("Something went wrong. Please try again.", "error");
       }
     }
   };
